@@ -13,12 +13,20 @@ class SearchResultGrid extends StatelessWidget {
   /// Spacing above the first row of results.
   final double topPadding;
   final ValueChanged<SearchResult>? onResultOpened;
+  final bool selectionMode;
+  final Set<String> selectedPaths;
+  final void Function(int index)? onToggleSelected;
+  final void Function(int index)? onLongPress;
 
   const SearchResultGrid({
     super.key,
     required this.results,
     this.topPadding = 8,
     this.onResultOpened,
+    this.selectionMode = false,
+    this.selectedPaths = const {},
+    this.onToggleSelected,
+    this.onLongPress,
   });
 
   @override
@@ -42,6 +50,12 @@ class SearchResultGrid extends StatelessWidget {
           results: results,
           index: index,
           onResultOpened: onResultOpened,
+          selected: selectedPaths.contains(result.filePath),
+          selectionMode: selectionMode,
+          onToggleSelected: onToggleSelected == null
+              ? null
+              : () => onToggleSelected!(index),
+          onLongPress: onLongPress == null ? null : () => onLongPress!(index),
         );
       },
     );
@@ -53,15 +67,27 @@ class _ResultCard extends StatelessWidget {
   final List<SearchResult> results;
   final int index;
   final ValueChanged<SearchResult>? onResultOpened;
+  final bool selected;
+  final bool selectionMode;
+  final VoidCallback? onToggleSelected;
+  final VoidCallback? onLongPress;
   late final focusNode = FocusNode();
   _ResultCard({
     required this.result,
     required this.results,
     required this.index,
     this.onResultOpened,
+    this.selected = false,
+    this.selectionMode = false,
+    this.onToggleSelected,
+    this.onLongPress,
   });
 
   void _openPreview(BuildContext context) {
+    if (selectionMode) {
+      onToggleSelected?.call();
+      return;
+    }
     focusNode.requestFocus();
     onResultOpened?.call(result);
     showContentInDialogOrPage<void>(
@@ -84,22 +110,41 @@ class _ResultCard extends StatelessWidget {
         margin: EdgeInsets.all(2.5),
         child: InkWell(
           onTap: () => _openPreview(context),
+          onLongPress: onLongPress,
           child: LayoutBuilder(
             builder: (context, constraints) {
               final pixelRatio = MediaQuery.devicePixelRatioOf(context);
-              return Image.file(
-                File(result.filePath),
-                cacheWidth: (constraints.maxWidth * pixelRatio).ceil(),
-                fit: BoxFit.cover,
-                width: constraints.maxWidth,
-                height: constraints.maxHeight,
-                errorBuilder: (context, _, __) => Center(
-                  child: Icon(
-                    Icons.broken_image,
-                    size: 48,
-                    color: context.colors.onSurfaceVariant,
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.file(
+                    File(result.filePath),
+                    cacheWidth: (constraints.maxWidth * pixelRatio).ceil(),
+                    fit: BoxFit.cover,
+                    width: constraints.maxWidth,
+                    height: constraints.maxHeight,
+                    errorBuilder: (context, _, __) => Center(
+                      child: Icon(
+                        Icons.broken_image,
+                        size: 48,
+                        color: context.colors.onSurfaceVariant,
+                      ),
+                    ),
                   ),
-                ),
+                  if (selectionMode)
+                    Positioned(
+                      top: 6,
+                      left: 6,
+                      child: Icon(
+                        selected
+                            ? Icons.check_circle
+                            : Icons.circle_outlined,
+                        color: selected
+                            ? context.colors.primary
+                            : Colors.white,
+                      ),
+                    ),
+                ],
               );
             },
           ),

@@ -1,11 +1,9 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as path;
 import 'package:picquery_app/src/engine/api.dart';
 import 'package:picquery_app/src/managers/album_manager.dart';
 import 'package:picquery_app/src/managers/indexing_manager.dart';
+import 'package:picquery_app/src/pages/album_browser_page.dart';
 import 'package:picquery_app/src/utils/adaptive_display.dart';
 import 'package:picquery_app/src/utils/color_scheme.dart';
 import 'package:picquery_app/src/utils/toast_helper.dart';
@@ -30,24 +28,10 @@ class AlbumManagePage extends WatchingStatefulWidget {
 }
 
 class _AlbumManagePageState extends State<AlbumManagePage> {
-  Future<void> _openAlbumLocation(String albumPath) async {
-    final strings = context.l10n;
-    if (!isDesktop) {
-      Toast.showMessage(strings.desktopOnlyOpenAlbum);
-      return;
-    }
-    if (!await Directory(albumPath).exists()) {
-      Toast.showMessage(strings.albumUnavailable);
-      return;
-    }
-    try {
-      final result = await OpenFilex.open(albumPath);
-      if (result.type != ResultType.done) {
-        Toast.showMessage(strings.openAlbumFailed(result.message));
-      }
-    } catch (error) {
-      Toast.showMessage(strings.openAlbumFailed(error));
-    }
+  void _openAlbum(Album album) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (_) => AlbumBrowserPage(album: album)),
+    );
   }
 
   Future<void> _deleteAlbum(Album album) async {
@@ -307,7 +291,7 @@ class _AlbumManagePageState extends State<AlbumManagePage> {
                       return _AlbumCard(
                         album: album,
                         indexing: indexing,
-                        onOpen: () => _openAlbumLocation(album.albumPath),
+                        onOpen: () => _openAlbum(album),
                         onDelete: () => _deleteAlbum(album),
                       );
                     }, childCount: albums.length),

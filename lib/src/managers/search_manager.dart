@@ -10,7 +10,7 @@ class SearchManager {
   static const int maxRecentSearches = 10;
   static const int maxRecentViewedPhotos = 10;
   static const int defaultResultLimit = 50;
-  static const List<int> resultLimitOptions = [25, 50, 100];
+  static const List<int> resultLimitOptions = [50, 100, 300, 500];
 
   final selectedAlbumIds = ValueNotifier<Set<int>>({});
   final resultLimit = ValueNotifier<int>(_storedResultLimit());

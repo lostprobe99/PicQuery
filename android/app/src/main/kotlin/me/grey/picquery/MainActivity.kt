@@ -7,6 +7,7 @@ import android.content.ContentUris
 import android.content.Intent
 import android.provider.MediaStore
 import android.os.Build
+import android.os.Environment
 import android.net.Uri
 import android.provider.Settings
 import androidx.core.content.FileProvider
@@ -50,9 +51,30 @@ class MainActivity : FlutterActivity() {
             }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "picquery/media")
             .setMethodCallHandler { call, result ->
-                if (call.method != "openImage") {
-                    result.notImplemented()
-                    return@setMethodCallHandler
+                when (call.method) {
+                    "hasAllFilesAccess" -> {
+                        val granted = Build.VERSION.SDK_INT < Build.VERSION_CODES.R ||
+                            Environment.isExternalStorageManager()
+                        result.success(granted)
+                        return@setMethodCallHandler
+                    }
+                    "requestAllFilesAccess" -> {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            startActivity(
+                                Intent(
+                                    Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                                    Uri.parse("package:$packageName"),
+                                ),
+                            )
+                        }
+                        result.success(true)
+                        return@setMethodCallHandler
+                    }
+                    "openImage" -> Unit
+                    else -> {
+                        result.notImplemented()
+                        return@setMethodCallHandler
+                    }
                 }
                 val path = call.argument<String>("path")
                 if (path.isNullOrBlank()) {

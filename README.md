@@ -2,6 +2,8 @@
 
 English | [中文](README_zh.md)
 
+This tree is a modified MIT build of [greyovo/PicQuery](https://github.com/greyovo/PicQuery). Tap an album to browse every indexed image. Long-press one image to start a selection, then long-press another to select everything between them. Copy or move the selection into a folder, or share it. On Android 11+, copy and move need all-files access. A few preset Chinese phrases still expand into English picture prompts; other Chinese sentences use the original on-device translation.
+
 ![PicQuery](README_assets/cover_en.jpg)
 
 PicQuery is an offline image search app. It indexes local folders or photo albums and lets you search them with text or a similar image. Photos, indexes, and model inference stay on your device.

@@ -4,12 +4,22 @@
 
 import 'package:logging/logging.dart';
 import 'package:picquery_app/src/engine/db.dart';
+import 'package:picquery_app/src/search/category_query.dart';
 import 'package:picquery_app/src/engine/indexer.dart' as indexer;
 import 'package:picquery_app/src/engine/models.dart';
 import 'package:picquery_app/src/engine/ort_engine.dart';
 import 'package:picquery_app/src/engine/translator.dart';
 
 export 'models.dart';
+
+/// Every indexed image in an album, ordered by file name.
+List<SearchResult> listAlbumImages({required int albumId}) {
+  if (!Db.isInitialized) return const [];
+  return [
+    for (final row in Db.instance.listAlbumImages(albumId))
+      SearchResult(filePath: row.$1, fileName: row.$2, similarity: 0),
+  ];
+}
 
 /// The indexed album's path and display name for a photo, including history.
 Future<(String, String?)?> getImageAlbum({required String filePath}) async {
@@ -81,6 +91,12 @@ Future<IndexStatus> getIndexStatus() async {
 /// Delete an indexed album and all its associated image records and vectors.
 Future<void> deleteAlbum({required int albumId}) async {
   Db.instance.deleteFolder(albumId);
+}
+
+/// Removes moved files from the index so albums stop listing the old path.
+void forgetMovedImages(List<String> filePaths) {
+  if (!Db.isInitialized || filePaths.isEmpty) return;
+  Db.instance.forgetImagesByPaths(filePaths);
 }
 
 /// Delete all indexed albums and their associated image records and vectors.
@@ -182,6 +198,49 @@ Future<List<SearchResult>> searchByTextWithFilters({
     'elapsed=${stopwatch.elapsedMilliseconds}ms.',
   );
   return results;
+}
+
+/// Runs every prompt in [category], then keeps images that look more like the
+/// category than the negative prompts. Each prompt uses a wider candidate pool
+/// than [limit] so a sticker that ranks just outside one prompt can still win
+/// after the scores are combined.
+Future<List<SearchResult>> searchByCategory({
+  required CategoryQuery category,
+  required int limit,
+  required List<int> albumIds,
+  int? modifiedAfter,
+}) async {
+  final pool = limit * 2 < 200 ? 200 : (limit * 2 > 800 ? 800 : limit * 2);
+  final positiveGroups = <List<SearchResult>>[];
+  for (final prompt in category.positivePrompts) {
+    final embedding = await OrtEngine.instance.encodeText(prompt);
+    positiveGroups.add(
+      await _searchByEmbedding(
+        embedding,
+        pool,
+        albumIds,
+        modifiedAfter: modifiedAfter,
+      ),
+    );
+  }
+  final negativeGroups = <List<SearchResult>>[];
+  for (final prompt in category.negativePrompts) {
+    final embedding = await OrtEngine.instance.encodeText(prompt);
+    negativeGroups.add(
+      await _searchByEmbedding(
+        embedding,
+        pool,
+        albumIds,
+        modifiedAfter: modifiedAfter,
+      ),
+    );
+  }
+  return mergeCategoryResults(
+    category: category,
+    positiveGroups: positiveGroups,
+    negativeGroups: negativeGroups,
+    limit: limit,
+  );
 }
 
 /// Search indexed images by image similarity.

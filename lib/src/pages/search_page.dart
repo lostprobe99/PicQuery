@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:picquery_app/src/engine/api.dart';
+import 'package:picquery_app/src/search/run_text_search.dart';
 import 'package:picquery_app/src/managers/album_manager.dart';
 import 'package:picquery_app/src/managers/indexing_manager.dart';
 import 'package:picquery_app/src/managers/search_manager.dart';
@@ -47,26 +48,12 @@ class _SearchPageState extends State<SearchPage> {
     super.dispose();
   }
 
-  bool _containsChinese(String text) => RegExp(r'[一-鿿]').hasMatch(text);
-
   Future<void> _searchByText() async {
     final query = _queryController.text.trim();
     if (query.isEmpty) return;
     try {
-      var searchQuery = query;
-      if (_containsChinese(query)) {
-        try {
-          searchQuery = await translateZhToEn(sentence: query);
-        } catch (error, stackTrace) {
-          _log.severe(
-            'Translation failed; using the original query.',
-            error,
-            stackTrace,
-          );
-        }
-      }
-      final results = await searchByTextWithFilters(
-        query: searchQuery,
+      final outcome = await runTextSearch(
+        query: query,
         limit: searchManager.resultLimit.value,
         albumIds: searchManager.selectedAlbumIds.value.toList(),
         modifiedAfter: searchManager.timeRange.value.modifiedAfterSeconds(
@@ -79,9 +66,9 @@ class _SearchPageState extends State<SearchPage> {
           context,
           _searchResultsRoute(
             SearchResultsPage(
-              results: results,
+              results: outcome.results,
               query: query,
-              realQuery: searchQuery,
+              realQuery: outcome.engineQuery,
               searchMode: SearchMode.text,
             ),
           ),

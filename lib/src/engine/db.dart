@@ -447,6 +447,20 @@ class Db {
     return (rows.first['c'] as int) > 0;
   }
 
+  /// Indexed images in grid order, by file name then path.
+  List<(String, String)> listAlbumImages(int folderId) {
+    return _conn
+        .select(
+          '''SELECT file_path, file_name FROM images
+             JOIN folder_images ON image_id = images.id
+             WHERE folder_id = ?1
+             ORDER BY file_name COLLATE NOCASE, file_path''',
+          [folderId],
+        )
+        .map((row) => (row['file_path'] as String, row['file_name'] as String))
+        .toList();
+  }
+
   /// Get all indexed file paths for a given folder_id.
   List<String> getIndexedFilePaths(int folderId) {
     return _conn
@@ -474,6 +488,32 @@ class Db {
       _deleteUnreferencedImages();
       _conn.execute('COMMIT');
       return removed;
+    } catch (_) {
+      _conn.execute('ROLLBACK');
+      rethrow;
+    }
+  }
+
+  /// Drops index rows for files that have left their indexed path.
+  void forgetImagesByPaths(List<String> filePaths) {
+    if (filePaths.isEmpty) return;
+    const chunkSize = 400;
+    _conn.execute('BEGIN');
+    try {
+      for (var start = 0; start < filePaths.length; start += chunkSize) {
+        final end = start + chunkSize < filePaths.length
+            ? start + chunkSize
+            : filePaths.length;
+        final slice = filePaths.sublist(start, end);
+        final placeholders = List.filled(slice.length, '?').join(',');
+        _conn.execute(
+          'DELETE FROM folder_images WHERE image_id IN '
+          '(SELECT id FROM images WHERE file_path IN ($placeholders))',
+          slice,
+        );
+      }
+      _deleteUnreferencedImages();
+      _conn.execute('COMMIT');
     } catch (_) {
       _conn.execute('ROLLBACK');
       rethrow;
