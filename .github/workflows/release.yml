@@ -26,9 +26,10 @@ jobs:
       - name: Allow only the repository owner
         env:
           ACTOR: ${{ github.actor }}
+          OWNER: ${{ github.repository_owner }}
         run: |
-          if [[ "$ACTOR" != "greyovo" ]]; then
-            echo "Only greyovo can publish a release." >&2
+          if [[ "$ACTOR" != "$OWNER" ]]; then
+            echo "Only $OWNER can publish a release." >&2
             exit 1
           fi
 
@@ -69,11 +70,7 @@ jobs:
             exit 1
           fi
 
-          previous_tag="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name)"
-          if [[ -z "$previous_tag" ]]; then
-            echo "No previous stable release was found." >&2
-            exit 1
-          fi
+          previous_tag="$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq .tag_name 2>/dev/null || true)"
 
           build_number="${BUILD_NUMBER_INPUT:-$(TZ=Asia/Shanghai date +%y%m%d)}"
           if [[ ! "$build_number" =~ ^[0-9]+$ ]]; then
@@ -154,8 +151,10 @@ jobs:
           TAG: ${{ inputs.tag || github.ref_name }}
         shell: bash
         run: |
-          printf '[查看提交对比](https://github.com/%s/compare/%s...%s)\n' \
-            "$GITHUB_REPOSITORY" "$PREVIOUS_TAG" "$TAG" >> release-notes.md
+          if [[ -n "$PREVIOUS_TAG" ]]; then
+            printf '[查看提交对比](https://github.com/%s/compare/%s...%s)\n' \
+              "$GITHUB_REPOSITORY" "$PREVIOUS_TAG" "$TAG" >> release-notes.md
+          fi
 
       - name: Create and publish release
         env:

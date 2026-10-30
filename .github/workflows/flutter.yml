@@ -112,12 +112,11 @@ jobs:
 
   build-android:
     name: Android integration tests and build
-    # Fork PRs have no signing secrets and must not request the build environment.
+    # Pull requests do not build a signed release package.
     if: github.event_name != 'pull_request'
     needs: [prepare-models, metadata, unit-tests]
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    environment: android-build
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -133,13 +132,27 @@ jobs:
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > android/upload-keystore.jks
-          {
-            printf 'storeFile=upload-keystore.jks\n'
-            printf 'storePassword=%s\n' "$STORE_PASSWORD"
-            printf 'keyAlias=%s\n' "$KEY_ALIAS"
-            printf 'keyPassword=%s\n' "$KEY_PASSWORD"
-          } > android/key.properties
+          if [[ -n "$KEYSTORE_BASE64" && -n "$STORE_PASSWORD" && -n "$KEY_ALIAS" && -n "$KEY_PASSWORD" ]]; then
+            printf '%s' "$KEYSTORE_BASE64" | base64 --decode > android/upload-keystore.jks
+            {
+              printf 'storeFile=upload-keystore.jks\n'
+              printf 'storePassword=%s\n' "$STORE_PASSWORD"
+              printf 'keyAlias=%s\n' "$KEY_ALIAS"
+              printf 'keyPassword=%s\n' "$KEY_PASSWORD"
+            } > android/key.properties
+          else
+            keytool -genkeypair -keystore android/upload-keystore.jks \
+              -alias upload -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass picquery-upload -keypass picquery-upload \
+              -dname "CN=PicQuery Fork, O=lostprobe99, C=CN"
+            {
+              printf 'storeFile=upload-keystore.jks\n'
+              printf 'storePassword=picquery-upload\n'
+              printf 'keyAlias=upload\n'
+              printf 'keyPassword=picquery-upload\n'
+            } > android/key.properties
+            echo "ANDROID_KEYSTORE_BASE64 is unset, so this build uses a new upload key. Installing a later build requires uninstalling the previous app."
+          fi
 
       - name: Build and package Android app
         shell: bash

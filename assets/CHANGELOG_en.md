@@ -1,5 +1,14 @@
 **Changelog**
 
+## v2.2.0
+
+- Open an album to browse every indexed image in it.
+- Long-press one image, then another, to select the range and copy, move, or share it.
+- Images that move successfully are removed from the album index.
+- Searches for stickers, portraits, anime, and game screenshots return a larger similarity list.
+
+---
+
 ## v2.1.1
 
 - Added warnings in album management for images that could not be indexed.
