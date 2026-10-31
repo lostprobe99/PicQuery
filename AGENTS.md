@@ -88,3 +88,12 @@ Flutter packages (`flutter_onnxruntime`, `sqlite_vector`, `sqlite3`, `image`) wi
 
 - Model export tooling lives in `greyovo/picquery-models` (default sibling directory `../picquery-models`); `ci/prepare_models.sh` runs `uv sync --locked` and `export.sh`, then copies outputs into `assets/models/`.
 - Translation model: MarianMT Chinese→English (`mt_zho-eng.fp32.quantized.onnx`) + SentencePiece tokenizers (`source_tokenizer.json`, `target_tokenizer.json`)
+
+## Cursor Cloud specific instructions
+
+- `flutter` and `dart` on `PATH` are Flutter 3.47.4 (Dart 3.13.3). FVM is not installed; call `flutter` directly.
+- Clang 18 links with GCC 14's libstdc++. `g++-14` must be installed or Linux builds fail with `cannot find -lstdc++`. GTK, Ninja, CMake, and Xvfb are also required (`flutter build linux`, `xvfb-run`).
+- `assets/models/mt_zho-eng.fp32.quantized.onnx` comes from Git LFS (`git lfs pull`). `mobileclip2_s0_visual.onnx` and `mobileclip2_s0_text.onnx` are gitignored; create them with `bash ci/prepare_models.sh` (`uv` plus network). If `../picquery-models` is not writable, set `PICQUERY_MODELS_DIR`.
+- After Dart edits: `flutter analyze lib/` and `flutter test`.
+- Linux correctness check (text embedding, image embedding, Chinese-to-English translation): `xvfb-run -a bash ci/test_integration.sh linux`.
+- The desktop X server has no DRI3, so the Flutter window stays unmapped under Impeller. Use the Xvfb integration test above instead of judging a blank desktop. `flutter build linux` writes `build/linux/x64/release/bundle/picquery_app`.
