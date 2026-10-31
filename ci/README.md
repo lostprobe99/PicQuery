@@ -8,8 +8,9 @@
   or signed builds; other events run Android tests and builds in `android-build`.
   Windows and Linux have build jobs. `release.yml` waits for the entire reusable
   workflow to succeed before publishing, including all integration tests.
-- `release.yml`: runs when `v*` tags are pushed, or via manual dispatch; only
-  the repository owner can publish. Pushes use the tag as the version and the
+- `release.yml`: runs when `v*` tags are pushed, or via manual dispatch; the
+  repository owner can publish, and so can a Cloud Agent push recorded as
+  `cursor[bot]`. Pushes use the tag as the version and the
   current Asia/Shanghai date in `YYMMDD` format as the build number. Manual
   runs accept a required `tag` and optional `build-number` (defaulting to the
   same date). Both localized changelogs must contain exactly one nonempty

@@ -23,13 +23,14 @@ jobs:
     name: Authorize release
     runs-on: ubuntu-latest
     steps:
-      - name: Allow only the repository owner
+      - name: Allow the repository owner or Cloud Agent
         env:
           ACTOR: ${{ github.actor }}
           OWNER: ${{ github.repository_owner }}
         run: |
-          if [[ "$ACTOR" != "$OWNER" ]]; then
-            echo "Only $OWNER can publish a release." >&2
+          # Cloud Agent tag pushes authenticate as cursor[bot], not the owner.
+          if [[ "$ACTOR" != "$OWNER" && "$ACTOR" != "cursor[bot]" ]]; then
+            echo "Only $OWNER or cursor[bot] can publish a release. Actor: $ACTOR" >&2
             exit 1
           fi
 
